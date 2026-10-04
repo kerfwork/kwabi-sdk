@@ -88,7 +88,8 @@ pub struct KwabiV1 {
         Option<unsafe extern "C" fn(*mut KwabiFmgrInfo, u64, u64, u64, *mut bool, *mut u64) -> i32>,
     // SPI
     pub spi_execute: extern "C" fn(*const i8, bool, i32) -> *mut KwabiSPIResult,
-    pub spi_execute_plan: extern "C" fn(*mut KwabiSPIPlan, *mut u64, *const i8, bool, i32) -> *mut KwabiSPIResult,
+    pub spi_execute_plan:
+        extern "C" fn(*mut KwabiSPIPlan, *mut u64, *const i8, bool, i32) -> *mut KwabiSPIResult,
     pub spi_free_result: extern "C" fn(*mut KwabiSPIResult),
     pub spi_result_ntuples: extern "C" fn(*mut KwabiSPIResult) -> i32,
     pub spi_result_get_value: extern "C" fn(*mut KwabiSPIResult, i32, i32) -> u64,
@@ -120,11 +121,16 @@ pub struct KwabiV1 {
     // Replication
     pub logical_decoding_begin: extern "C" fn(u32, i64) -> *mut KwabiLogicalDecodingCtx,
     pub logical_decoding_end: extern "C" fn(*mut KwabiLogicalDecodingCtx),
-    pub logical_decoding_read: extern "C" fn(*mut KwabiLogicalDecodingCtx, *mut i64, *mut *mut std::ffi::c_void) -> bool,
+    pub logical_decoding_read:
+        extern "C" fn(*mut KwabiLogicalDecodingCtx, *mut i64, *mut *mut std::ffi::c_void) -> bool,
     pub output_plugin_startup: extern "C" fn(*mut std::ffi::c_void),
     pub output_plugin_shutdown: extern "C" fn(*mut std::ffi::c_void),
     // Background workers
-    pub bgworker_register: extern "C" fn(*const i8, extern "C" fn(*mut std::ffi::c_void), *mut std::ffi::c_void) -> u32,
+    pub bgworker_register: extern "C" fn(
+        *const i8,
+        extern "C" fn(*mut std::ffi::c_void),
+        *mut std::ffi::c_void,
+    ) -> u32,
     pub bgworker_terminate: extern "C" fn(u32),
     pub bgworker_is_running: extern "C" fn(u32) -> bool,
     // Storage primitives
@@ -166,7 +172,8 @@ pub struct KwabiV1 {
     pub syscache_get_tuple: extern "C" fn(*const i8, u64) -> *mut std::ffi::c_void,
     pub syscache_free_tuple: extern "C" fn(*mut std::ffi::c_void),
     // Optimizer
-    pub planner_info: extern "C" fn(*mut KwabiNode, i32, *mut std::ffi::c_void) -> *mut KwabiPlannerInfo,
+    pub planner_info:
+        extern "C" fn(*mut KwabiNode, i32, *mut std::ffi::c_void) -> *mut KwabiPlannerInfo,
     pub free_planner_info: extern "C" fn(*mut KwabiPlannerInfo),
     pub planner_estimate_rows: extern "C" fn(*mut KwabiPlannerInfo, *mut std::ffi::c_void) -> f64,
     pub planner_estimate_cost: extern "C" fn(*mut KwabiPlannerInfo, *mut std::ffi::c_void) -> f64,
@@ -227,7 +234,8 @@ pub struct KwabiV1 {
     pub tuple_attname: extern "C" fn(*mut std::ffi::c_void, i32) -> *const i8,
     pub tuple_attisdropped: extern "C" fn(*mut std::ffi::c_void, i32) -> bool,
     pub tuple_attnum: extern "C" fn(*mut std::ffi::c_void, *const i8) -> i32,
-    pub heap_tuple_getattr: extern "C" fn(*mut std::ffi::c_void, i32, *mut std::ffi::c_void, *mut bool) -> u64,
+    pub heap_tuple_getattr:
+        extern "C" fn(*mut std::ffi::c_void, i32, *mut std::ffi::c_void, *mut bool) -> u64,
     pub heap_tuple_setattr: extern "C" fn(*mut std::ffi::c_void, i32, u64, *mut std::ffi::c_void),
     pub heap_tuple_tableoid: extern "C" fn(*mut std::ffi::c_void) -> u32,
     pub heap_tuple_tid: extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
@@ -236,10 +244,16 @@ pub struct KwabiV1 {
     pub slot_tupledesc: extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
     // Table AM
     pub table_am_get: extern "C" fn(u32) -> *mut KwabiTableAm,
-    pub table_am_beginscan: extern "C" fn(*mut KwabiTableAm, *mut std::ffi::c_void, i32, *mut std::ffi::c_void) -> *mut std::ffi::c_void,
+    pub table_am_beginscan: extern "C" fn(
+        *mut KwabiTableAm,
+        *mut std::ffi::c_void,
+        i32,
+        *mut std::ffi::c_void,
+    ) -> *mut std::ffi::c_void,
     pub table_am_endscan: extern "C" fn(*mut std::ffi::c_void),
     pub table_am_getnext: extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> bool,
-    pub table_am_insert: extern "C" fn(*mut KwabiTableAm, *mut std::ffi::c_void, i32, *mut std::ffi::c_void),
+    pub table_am_insert:
+        extern "C" fn(*mut KwabiTableAm, *mut std::ffi::c_void, i32, *mut std::ffi::c_void),
     pub table_am_update: extern "C" fn(*mut KwabiTableAm, *mut std::ffi::c_void, i32),
     pub table_am_delete: extern "C" fn(*mut KwabiTableAm, *mut std::ffi::c_void, i32),
     // Executor
@@ -271,11 +285,20 @@ pub struct KwabiV1 {
     pub guc_set_bool: extern "C" fn(*const i8, bool),
     pub guc_set_float: extern "C" fn(*const i8, f64),
     // Explain
-    pub explain_query: extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void, *const i8, *mut std::ffi::c_void, *mut std::ffi::c_void),
+    pub explain_query: extern "C" fn(
+        *mut std::ffi::c_void,
+        *mut std::ffi::c_void,
+        *mut std::ffi::c_void,
+        *const i8,
+        *mut std::ffi::c_void,
+        *mut std::ffi::c_void,
+    ),
     pub explain_get_index_name: extern "C" fn(u32) -> *const i8,
     // Vacuum
-    pub vacuum_rel: extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void),
-    pub vacuum_analyze_rel: extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void),
+    pub vacuum_rel:
+        extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void),
+    pub vacuum_analyze_rel:
+        extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void),
     // Triggers
     pub trigger_desc: extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
     pub trigger_count: extern "C" fn(*mut std::ffi::c_void) -> i32,
@@ -328,10 +351,17 @@ pub struct KwabiV1 {
     // `Option<fn>` is the same size and layout as the pointer it wraps (null
     // == None), so this costs nothing at the ABI level and is checked against
     // the header's field count by the harness like every other field.
-    pub memory_chunk_context: Option<unsafe extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void>,
+    pub memory_chunk_context:
+        Option<unsafe extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void>,
     pub current_memory_context: Option<unsafe extern "C" fn() -> *mut std::ffi::c_void>,
     pub raise_error: Option<unsafe extern "C" fn(i32, *const i8)>,
-    pub try_body: Option<unsafe extern "C" fn(guarded::KwabiBodyFn, *mut std::ffi::c_void, *mut guarded::KwabiErrorAbi) -> i32>,
+    pub try_body: Option<
+        unsafe extern "C" fn(
+            guarded::KwabiBodyFn,
+            *mut std::ffi::c_void,
+            *mut guarded::KwabiErrorAbi,
+        ) -> i32,
+    >,
     pub error_get: Option<unsafe extern "C" fn(*mut guarded::KwabiErrorAbi)>,
     pub capabilities: Option<unsafe extern "C" fn() -> u64>,
     pub memory_context_create: Option<unsafe extern "C" fn(*const i8) -> *mut KwabiMemoryContext>,
@@ -1071,11 +1101,7 @@ impl<'a> LogicalDecodingCtx<'a> {
     pub fn read(&self) -> Option<(i64, *mut std::ffi::c_void)> {
         let mut lsn: i64 = 0;
         let mut data: *mut std::ffi::c_void = ptr::null_mut();
-        let success = (self.kwabi.api.logical_decoding_read)(
-            self.handle,
-            &mut lsn,
-            &mut data,
-        );
+        let success = (self.kwabi.api.logical_decoding_read)(self.handle, &mut lsn, &mut data);
         if success {
             Some((lsn, data))
         } else {

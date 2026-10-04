@@ -526,21 +526,25 @@ impl Kwabi {
     /// `Kwabi::error()`. (The error type is `()` rather than `KwabiError`
     /// because the message lives in the runtime's buffer, not here; call
     /// `error()` to fetch it.)
+    #[allow(clippy::result_unit_err)]
     pub fn call_function0(&self, info: &FmgrInfo) -> Result<Option<u64>, ()> {
         self.call_function(info, &[], &[])
     }
 
     /// Call a 1-argument function.
+    #[allow(clippy::result_unit_err)]
     pub fn call_function1(&self, info: &FmgrInfo, arg1: u64) -> Result<Option<u64>, ()> {
         self.call_function(info, &[arg1], &[false])
     }
 
     /// Call a 2-argument function.
+    #[allow(clippy::result_unit_err)]
     pub fn call_function2(&self, info: &FmgrInfo, arg1: u64, arg2: u64) -> Result<Option<u64>, ()> {
         self.call_function(info, &[arg1, arg2], &[false, false])
     }
 
     /// Call a 3-argument function.
+    #[allow(clippy::result_unit_err)]
     pub fn call_function3(
         &self,
         info: &FmgrInfo,
@@ -560,6 +564,7 @@ impl Kwabi {
     /// This goes through the variadic `call_function` slot, which the shim
     /// implements by building the `FunctionCallInfo` itself — PostgreSQL has no
     /// N-ary call helper.
+    #[allow(clippy::result_unit_err)]
     pub fn call_function(
         &self,
         info: &FmgrInfo,
@@ -1117,7 +1122,7 @@ static mut KWABI_API: Option<&'static KwabiV1> = None;
 ///
 /// This is called by the runtime after `kwabi_ext_init`.
 pub fn instance() -> Option<Kwabi> {
-    unsafe { KWABI_API.map(|api| Kwabi::from_api(api)) }
+    unsafe { KWABI_API.map(Kwabi::from_api) }
 }
 
 // ========================================================================

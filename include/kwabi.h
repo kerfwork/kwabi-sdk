@@ -769,7 +769,7 @@ typedef struct KwabiV1 {
     bool (*tuple_attisdropped)(TupleDesc tupdesc, int attno);
     int (*tuple_attnum)(TupleDesc tupdesc, const char *attname);
     Datum (*heap_tuple_getattr)(HeapTuple tuple, int attno, TupleDesc tupdesc, bool *isnull);
-    void (*heap_tuple_setattr)(HeapTuple tuple, int attno, Datum value, TupleDesc tupdesc);
+    HeapTuple (*heap_tuple_setattr)(HeapTuple tuple, int attno, Datum value, TupleDesc tupdesc);
     Oid (*heap_tuple_tableoid)(HeapTuple tuple);
     ItemPointer (*heap_tuple_tid)(HeapTuple tuple);
     bool (*slot_isnull)(TupleTableSlot slot, int attno);

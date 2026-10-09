@@ -104,13 +104,18 @@ def main():
             fixed = args[:-2]
             params = ", ".join([f"a{i}: {t}" for i, t in enumerate(fixed)] + ["msg: *const c_char"])
             call_args = ", ".join([f"a{i}" for i in range(len(fixed))]
-                                  + ['b"%s\\0".as_ptr() as *const c_char', "msg"])
+                                  + ['c"%s".as_ptr()', "msg"])
         else:
             params = ", ".join(f"a{i}: {t}" for i, t in enumerate(args))
             call_args = ", ".join(f"a{i}" for i in range(len(args)))
         sig_ret = "" if ret == "()" else f" -> {ret}"
         w("")
         w(f"    /// Slot `{name}`.")
+        w("    ///")
+        w("    /// # Safety")
+        w("    ///")
+        w("    /// The runtime must provide this slot with exactly this signature, and")
+        w("    /// every pointer argument must be valid for the use the slot makes of it.")
         w(f"    pub unsafe fn {name}(&self{', ' if params else ''}{params}){sig_ret} {{")
         w(f'        (self.api.{name}.expect("{name}"))({call_args})')
         w("    }")

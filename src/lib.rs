@@ -134,11 +134,11 @@ pub struct KwabiV1 {
     pub sequence_setval: Option<extern "C" fn(u32, i64) -> i64>,
     pub logical_decoding_begin:
         Option<extern "C" fn(*const c_char) -> *mut KwabiLogicalDecodingCtx>,
-    pub logical_decoding_end: Option<extern "C" fn(*mut KwabiLogicalDecodingCtx)>,
     pub logical_decoding_read: Option<
         extern "C" fn(*mut KwabiLogicalDecodingCtx, *mut i64, *mut i32, *mut *const c_char) -> bool,
     >,
     pub logical_decoding_confirm: Option<extern "C" fn(*mut KwabiLogicalDecodingCtx, i64)>,
+    pub logical_decoding_end: Option<extern "C" fn(*mut KwabiLogicalDecodingCtx)>,
     pub output_plugin_startup: Option<extern "C" fn(*mut std::ffi::c_void)>,
     pub output_plugin_shutdown: Option<extern "C" fn(*mut std::ffi::c_void)>,
     pub bgworker_register: Option<

@@ -871,8 +871,9 @@ typedef struct KwabiV1 {
      * An unknown name raises. The version-specific options raise on majors that
      * do not have them.
      *
-     * explain_query runs ExplainOnePlan on the plan in queryDesc. With analyze
-     * set, the plan runs, as it does for SQL EXPLAIN ANALYZE. */
+     * explain_query frames and runs the plan in queryDesc as SQL EXPLAIN does:
+     * XML, JSON and YAML output is a complete document. With analyze set, the
+     * plan runs, as it does for SQL EXPLAIN ANALYZE. */
     void (*explain_query)(KwabiQueryDesc queryDesc, KwabiIntoClause into, KwabiExplainState es, const char *queryString, KwabiParamListInfo params, KwabiQueryEnvironment queryEnv);
     KwabiExplainState (*explain_state_new)(void);
     void (*explain_state_set_option)(KwabiExplainState es, const char *name, bool value);

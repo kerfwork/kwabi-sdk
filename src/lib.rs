@@ -315,6 +315,11 @@ pub struct KwabiV1 {
             *mut std::ffi::c_void,
         ),
     >,
+    pub explain_state_new: Option<extern "C" fn() -> *mut std::ffi::c_void>,
+    pub explain_state_set_option: Option<extern "C" fn(*mut std::ffi::c_void, *const c_char, bool)>,
+    pub explain_state_set_format: Option<extern "C" fn(*mut std::ffi::c_void, i32)>,
+    pub explain_state_text: Option<extern "C" fn(*mut std::ffi::c_void) -> *const c_char>,
+    pub explain_state_free: Option<extern "C" fn(*mut std::ffi::c_void)>,
     pub explain_get_index_name: Option<extern "C" fn(u32) -> *const c_char>,
     pub vacuum_rel:
         Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void)>,

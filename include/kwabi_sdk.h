@@ -202,19 +202,6 @@ static inline bool kwabi_query_has_for_update(const KwabiV1 *api, KwabiNode *que
 }
 
 /* ========================================================================
- * Transaction helpers
- * ======================================================================== */
-
-/* There is no kwabi_begin/kwabi_commit/kwabi_abort. An extension called from
- * SQL is already inside a transaction and cannot control its boundaries; those
- * helpers could only ever raise or FATAL. See the Transactions block in
- * kwabi.h for the reasoning. What is left is the identity accessor. */
-
-static inline int64 kwabi_current_xid(const KwabiV1 *api) {
-    return api->transaction_get_current_xid();
-}
-
-/* ========================================================================
  * GUC helpers
  * ======================================================================== */
 
@@ -418,16 +405,20 @@ static inline Oid kwabi_oper_result_type(const KwabiV1 *api, Oid oper_oid) {
  * Replication helpers
  * ======================================================================== */
 
-static inline KwabiLogicalDecodingCtx *kwabi_logical_decoding_begin(const KwabiV1 *api, Oid slot_oid, int64 start_lsn) {
-    return api->logical_decoding_begin(slot_oid, start_lsn);
+static inline KwabiLogicalDecodingCtx *kwabi_logical_decoding_begin(const KwabiV1 *api, const char *slot_name, int32 max_changes, const char *const *option_names, const char *const *option_values, int32 noptions) {
+    return api->logical_decoding_begin(slot_name, max_changes, option_names, option_values, noptions);
+}
+
+static inline bool kwabi_logical_decoding_read(const KwabiV1 *api, KwabiLogicalDecodingCtx *ctx, int64 *lsn, int32 *xid, const char **data, int32 *len) {
+    return api->logical_decoding_read(ctx, lsn, xid, data, len);
+}
+
+static inline void kwabi_logical_decoding_confirm(const KwabiV1 *api, KwabiLogicalDecodingCtx *ctx, int64 lsn) {
+    api->logical_decoding_confirm(ctx, lsn);
 }
 
 static inline void kwabi_logical_decoding_end(const KwabiV1 *api, KwabiLogicalDecodingCtx *ctx) {
     api->logical_decoding_end(ctx);
-}
-
-static inline bool kwabi_logical_decoding_read(const KwabiV1 *api, KwabiLogicalDecodingCtx *ctx, int64 *lsn, StringInfo *data) {
-    return api->logical_decoding_read(ctx, lsn, data);
 }
 
 /* ========================================================================

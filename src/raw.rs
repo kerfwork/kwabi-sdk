@@ -2290,6 +2290,277 @@ impl<'a> Raw<'a> {
             .memory_context_create
             .expect("memory_context_create"))(a0)
     }
+
+    /// Slot `hook_register_executor_start`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_register_executor_start(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+    ) -> i32 {
+        (self
+            .api
+            .hook_register_executor_start
+            .expect("hook_register_executor_start"))(a0, a1)
+    }
+
+    /// Slot `hook_register_executor_run`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_register_executor_run(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+    ) -> i32 {
+        (self
+            .api
+            .hook_register_executor_run
+            .expect("hook_register_executor_run"))(a0, a1)
+    }
+
+    /// Slot `hook_register_executor_finish`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_register_executor_finish(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+    ) -> i32 {
+        (self
+            .api
+            .hook_register_executor_finish
+            .expect("hook_register_executor_finish"))(a0, a1)
+    }
+
+    /// Slot `hook_register_executor_end`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_register_executor_end(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+    ) -> i32 {
+        (self
+            .api
+            .hook_register_executor_end
+            .expect("hook_register_executor_end"))(a0, a1)
+    }
+
+    /// Slot `hook_next_executor_start`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_next_executor_start(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+        a2: i32,
+        a3: *mut KwabiError,
+    ) -> i32 {
+        (self
+            .api
+            .hook_next_executor_start
+            .expect("hook_next_executor_start"))(a0, a1, a2, a3)
+    }
+
+    /// Slot `hook_next_executor_run`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_next_executor_run(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+        a2: i32,
+        a3: u64,
+        a4: *mut KwabiError,
+    ) -> i32 {
+        (self
+            .api
+            .hook_next_executor_run
+            .expect("hook_next_executor_run"))(a0, a1, a2, a3, a4)
+    }
+
+    /// Slot `hook_next_executor_finish`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_next_executor_finish(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+        a2: *mut KwabiError,
+    ) -> i32 {
+        (self
+            .api
+            .hook_next_executor_finish
+            .expect("hook_next_executor_finish"))(a0, a1, a2)
+    }
+
+    /// Slot `hook_next_executor_end`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_next_executor_end(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+        a2: *mut KwabiError,
+    ) -> i32 {
+        (self
+            .api
+            .hook_next_executor_end
+            .expect("hook_next_executor_end"))(a0, a1, a2)
+    }
+
+    /// Slot `hook_register_executor_check_perms`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_register_executor_check_perms(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+    ) -> i32 {
+        (self
+            .api
+            .hook_register_executor_check_perms
+            .expect("hook_register_executor_check_perms"))(a0, a1)
+    }
+
+    /// Slot `hook_register_planner`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_register_planner(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+    ) -> i32 {
+        (self
+            .api
+            .hook_register_planner
+            .expect("hook_register_planner"))(a0, a1)
+    }
+
+    /// Slot `hook_next_executor_check_perms`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_next_executor_check_perms(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+        a2: *mut std::ffi::c_void,
+        a3: i32,
+        a4: *mut i32,
+        a5: *mut KwabiError,
+    ) -> i32 {
+        (self
+            .api
+            .hook_next_executor_check_perms
+            .expect("hook_next_executor_check_perms"))(a0, a1, a2, a3, a4, a5)
+    }
+
+    /// Slot `hook_next_planner`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    #[allow(clippy::too_many_arguments)]
+    pub unsafe fn hook_next_planner(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+        a2: *const c_char,
+        a3: i32,
+        a4: *mut std::ffi::c_void,
+        a5: *mut *mut std::ffi::c_void,
+        a6: *mut KwabiError,
+    ) -> i32 {
+        (self.api.hook_next_planner.expect("hook_next_planner"))(a0, a1, a2, a3, a4, a5, a6)
+    }
+
+    /// Slot `hook_register_process_utility`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_register_process_utility(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+    ) -> i32 {
+        (self
+            .api
+            .hook_register_process_utility
+            .expect("hook_register_process_utility"))(a0, a1)
+    }
+
+    /// Slot `hook_next_process_utility`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    #[allow(clippy::too_many_arguments)]
+    pub unsafe fn hook_next_process_utility(
+        &self,
+        a0: *mut std::ffi::c_void,
+        a1: *mut std::ffi::c_void,
+        a2: *const c_char,
+        a3: i32,
+        a4: i32,
+        a5: *mut std::ffi::c_void,
+        a6: *mut std::ffi::c_void,
+        a7: *mut std::ffi::c_void,
+        a8: *mut std::ffi::c_void,
+        a9: *mut KwabiError,
+    ) -> i32 {
+        (self
+            .api
+            .hook_next_process_utility
+            .expect("hook_next_process_utility"))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+    }
+
+    /// Slot `hook_bind_extension`.
+    ///
+    /// # Safety
+    ///
+    /// The runtime must provide this slot with exactly this signature, and
+    /// every pointer argument must be valid for the use the slot makes of it.
+    pub unsafe fn hook_bind_extension(&self, a0: *const c_char, a1: *const c_char) -> i32 {
+        (self.api.hook_bind_extension.expect("hook_bind_extension"))(a0, a1)
+    }
 }
 
 /// Every slot name `Raw` exposes, in header order. The test in lib.rs checks
@@ -2499,4 +2770,19 @@ pub const SLOTS: &[&str] = &[
     "error_get",
     "capabilities",
     "memory_context_create",
+    "hook_register_executor_start",
+    "hook_register_executor_run",
+    "hook_register_executor_finish",
+    "hook_register_executor_end",
+    "hook_next_executor_start",
+    "hook_next_executor_run",
+    "hook_next_executor_finish",
+    "hook_next_executor_end",
+    "hook_register_executor_check_perms",
+    "hook_register_planner",
+    "hook_next_executor_check_perms",
+    "hook_next_planner",
+    "hook_register_process_utility",
+    "hook_next_process_utility",
+    "hook_bind_extension",
 ];

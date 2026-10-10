@@ -402,6 +402,72 @@ pub struct KwabiV1 {
     pub capabilities: Option<unsafe extern "C" fn() -> u64>,
     pub memory_context_create:
         Option<unsafe extern "C" fn(*const c_char) -> *mut KwabiMemoryContext>,
+    pub hook_register_executor_start:
+        Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> i32>,
+    pub hook_register_executor_run:
+        Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> i32>,
+    pub hook_register_executor_finish:
+        Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> i32>,
+    pub hook_register_executor_end:
+        Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> i32>,
+    pub hook_next_executor_start: Option<
+        extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, i32, *mut KwabiError) -> i32,
+    >,
+    pub hook_next_executor_run: Option<
+        extern "C" fn(
+            *mut std::ffi::c_void,
+            *mut std::ffi::c_void,
+            i32,
+            u64,
+            *mut KwabiError,
+        ) -> i32,
+    >,
+    pub hook_next_executor_finish:
+        Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut KwabiError) -> i32>,
+    pub hook_next_executor_end:
+        Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut KwabiError) -> i32>,
+    pub hook_register_executor_check_perms:
+        Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> i32>,
+    pub hook_register_planner:
+        Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> i32>,
+    pub hook_next_executor_check_perms: Option<
+        extern "C" fn(
+            *mut std::ffi::c_void,
+            *mut std::ffi::c_void,
+            *mut std::ffi::c_void,
+            i32,
+            *mut i32,
+            *mut KwabiError,
+        ) -> i32,
+    >,
+    pub hook_next_planner: Option<
+        extern "C" fn(
+            *mut std::ffi::c_void,
+            *mut std::ffi::c_void,
+            *const c_char,
+            i32,
+            *mut std::ffi::c_void,
+            *mut *mut std::ffi::c_void,
+            *mut KwabiError,
+        ) -> i32,
+    >,
+    pub hook_register_process_utility:
+        Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> i32>,
+    pub hook_next_process_utility: Option<
+        extern "C" fn(
+            *mut std::ffi::c_void,
+            *mut std::ffi::c_void,
+            *const c_char,
+            i32,
+            i32,
+            *mut std::ffi::c_void,
+            *mut std::ffi::c_void,
+            *mut std::ffi::c_void,
+            *mut std::ffi::c_void,
+            *mut KwabiError,
+        ) -> i32,
+    >,
+    pub hook_bind_extension: Option<extern "C" fn(*const c_char, *const c_char) -> i32>,
 }
 
 // Opaque handle types
@@ -844,24 +910,6 @@ impl Kwabi {
             handle,
             kwabi: self,
         })
-    }
-
-    // ---- Transactions ----
-
-    /// The current top-level transaction id, or 0 when none is assigned yet.
-    ///
-    /// Non-allocating: asking does not force an XID into existence, so this is
-    /// safe to call for tagging without changing transaction behaviour. 0 is
-    /// the honest answer for a read-only transaction, not an error.
-    ///
-    /// There is deliberately no start/commit/abort here: an extension called
-    /// from SQL is already inside a transaction and cannot control its
-    /// boundaries. Use the runtime's `try_body` for partial-rollback atomicity.
-    pub fn current_xid(&self) -> i64 {
-        (self
-            .api
-            .transaction_get_current_xid
-            .expect("transaction_get_current_xid"))()
     }
 
     // ---- GUC ----

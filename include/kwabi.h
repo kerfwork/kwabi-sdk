@@ -100,10 +100,37 @@ extern "C" {
  * AND at least one SLRU was declared and initialised. See group_slru.c. */
 #define KWABI_CAP_SLRU                     (1ULL << 5)
 
+/* HOOKS: the executor hook slots chain. Bodies registered on a point run in
+ * registration order; each one that calls `next` reaches the rest of the chain
+ * and then the standard function; and an error from any link reaches the
+ * statement with its SQLSTATE and message. Not derivable from slot presence: a
+ * runtime could expose the hook slots as single overrides that replace one
+ * another, which would be wired and still wrong. */
+#define KWABI_CAP_HOOKS                    (1ULL << 6)
+
+/* HOOK_RELOAD: an extension's hook bodies can be replaced in a running backend
+ * with hook_bind_extension, without a server restart. It holds only when the runtime
+ * is preloaded (shared memory exists), so it is not derivable from the slot. A
+ * replaced body runs from its new library image; statics in the old image are not
+ * carried over, and a new image needs a new file name.
+ *
+ * Reload rule: a body change is picked up by hook_bind_extension and needs no restart.
+ * A change to the runtime itself needs a postmaster restart, because the runtime is
+ * preloaded and its code is mapped once per server. */
+#define KWABI_CAP_HOOK_RELOAD              (1ULL << 7)
+
+/* AGGREGATE: a bound aggregate body runs with its state pinned to the body table that
+ * created it (see the aggregate section below), so a reload never changes a running
+ * aggregate's layout; a declared `combine` is used for partial aggregation; and a
+ * declared `inverse` is used only for moving frames. Not derivable from slot presence:
+ * a runtime could expose the aggregate functions and ignore pinning or combine. */
+#define KWABI_CAP_AGGREGATE                (1ULL << 8)
+
 /* Every defined bit, for a runtime that supports the lot. */
 #define KWABI_CAP_ALL \
     (KWABI_CAP_CORE | KWABI_CAP_STRUCTURED_ERRORS | KWABI_CAP_ERROR_FIREWALL | \
-     KWABI_CAP_MEMORY_INTROSPECTION | KWABI_CAP_ATOMIC_BODY | KWABI_CAP_SLRU)
+     KWABI_CAP_MEMORY_INTROSPECTION | KWABI_CAP_ATOMIC_BODY | KWABI_CAP_SLRU | \
+     KWABI_CAP_HOOKS | KWABI_CAP_HOOK_RELOAD | KWABI_CAP_AGGREGATE)
 #define KWABI_VERSION KWABI_VERSION_1
 
 /* PostgreSQL version numbers (from pg_config.h) */
@@ -138,6 +165,8 @@ typedef void *KwabiIntoClause;
 typedef void *KwabiExplainState;
 typedef void *KwabiParamListInfo;
 typedef void *KwabiQueryEnvironment;
+typedef void *KwabiDestReceiver;
+typedef void *KwabiQueryCompletion;
 typedef void *KwabiSnapshot;
 typedef void *KwabiTriggerDesc;
 typedef void *KwabiTrigger;
@@ -551,6 +580,72 @@ kwabi_error_set_object(KwabiError *err,
  * New functions are appended in future versions. Never reorder or remove.
  * ======================================================================== */
 
+/* ========================================================================
+ * Executor hooks (appended, still v1)
+ *
+ * A hook body is a C function that reports failure through its return value and
+ * `err`, and never raises or unwinds. The runtime calls it from a trampoline that
+ * PostgreSQL invokes as the executor hook. See notes/hook-registry-design.md.
+ *
+ * Return values:
+ *   KWABI_OK              the body succeeded;
+ *   KWABI_ERR_BODY_RAISED the body failed; it filled `err`;
+ *   KWABI_ERR_RAISED      a call through `next` raised; `err` holds the error.
+ *
+ * `next` runs the rest of the chain: the bodies registered after this one, then
+ * the standard executor function. A body may call it zero or one times. `arg` is
+ * the value given to the register slot.
+ *
+ * The execute_once argument of ExecutorRun_hook (PostgreSQL 16 and 17 only) is not
+ * exposed. The runtime forwards the value it received, so an extension sees one
+ * signature on every major.
+ * ======================================================================== */
+
+typedef void *KwabiHookNext;
+
+typedef KwabiStatus (*KwabiExecutorStartBody)(KwabiQueryDesc queryDesc, int eflags,
+                                              KwabiHookNext next, KwabiError *err,
+                                              void *arg);
+typedef KwabiStatus (*KwabiExecutorRunBody)(KwabiQueryDesc queryDesc, int direction,
+                                            uint64_t count, KwabiHookNext next,
+                                            KwabiError *err, void *arg);
+typedef KwabiStatus (*KwabiExecutorFinishBody)(KwabiQueryDesc queryDesc, KwabiHookNext next,
+                                               KwabiError *err, void *arg);
+typedef KwabiStatus (*KwabiExecutorEndBody)(KwabiQueryDesc queryDesc, KwabiHookNext next,
+                                            KwabiError *err, void *arg);
+/* Permission check (ExecCheckPermissions). PostgreSQL runs its built-in checks
+ * first and calls the hook only when they pass, so a body can deny but never grant.
+ * `*allowed` is the result. With ereport_on_violation set, a denial must come back
+ * as KWABI_ERR_BODY_RAISED with `err` filled; the trampoline raises it. A silent
+ * denial with ereport_on_violation set is raised as 42501 by the trampoline. */
+typedef KwabiStatus (*KwabiExecutorCheckPermsBody)(KwabiList rangeTable,
+                                                   KwabiList rtePermInfos,
+                                                   int ereport_on_violation,
+                                                   KwabiHookNext next,
+                                                   int *allowed, KwabiError *err,
+                                                   void *arg);
+
+/* Planner (planner_hook). `*planned` receives the PlannedStmt. A body that returns
+ * KWABI_OK must set it; a NULL result is raised as an error by the trampoline. */
+typedef KwabiStatus (*KwabiPlannerBody)(KwabiNode parse, const char *queryString,
+                                        int cursorOptions,
+                                        KwabiParamListInfo boundParams,
+                                        KwabiHookNext next, KwabiNode *planned,
+                                        KwabiError *err, void *arg);
+
+/* Utility statements (ProcessUtility_hook). `context` is PostgreSQL's
+ * ProcessUtilityContext value; `qc` is filled by the standard function and is
+ * passed through unchanged by a body. A body that returns KWABI_OK has run the
+ * rest of the chain or has chosen not to, and the statement's effects are its own. */
+typedef KwabiStatus (*KwabiProcessUtilityBody)(KwabiNode pstmt, const char *queryString,
+                                               int readOnlyTree, int context,
+                                               KwabiParamListInfo params,
+                                               KwabiQueryEnvironment queryEnv,
+                                               KwabiDestReceiver dest,
+                                               KwabiQueryCompletion qc,
+                                               KwabiHookNext next, KwabiError *err,
+                                               void *arg);
+
 typedef struct KwabiV1 {
     uint32_t version;  /* KWABI_VERSION_1 */
 
@@ -728,6 +823,38 @@ typedef struct KwabiV1 {
     void (*memory_context_reset)(KwabiMemoryContext context);
     void (*memory_context_delete)(KwabiMemoryContext context);
 
+    /* ---- Slots with no error channel ----
+     *
+     * A slot that returns void, bool or int has no KwabiStatus to return. When it cannot
+     * give a true answer, the convention is:
+     *
+     *   - it records the reason in the runtime's error buffer and does not raise. Read the
+     *     reason with error_code() (the SQLSTATE) and error_message(). Clear the buffer with
+     *     error_clear() before the call whose result you will check;
+     *   - it returns a value that cannot be mistaken for an answer:
+     *       void  nothing;
+     *       bool  false;
+     *       int   -1, but only where -1 is not itself a valid answer. Where it is, -1 with
+     *             no error set means "no such thing", and -1 with an error set means the
+     *             slot could not answer.
+     *   - the SQLSTATE is 0A000 (FEATURE_NOT_SUPPORTED) when this runtime cannot answer at
+     *     all. Other SQLSTATEs mean a real failure.
+     *
+     * A bool that reads false is not evidence of false. Check error_code() whenever the
+     * answer matters. A successful call does not clear the buffer, so a stale error from an
+     * earlier call can still be there; that is why error_clear() comes first.
+     *
+     * Slots that follow this convention (see shim/group_node.c and shim/group_lock.c):
+     *   spinlock_held_by_me         false, 0A000 always: a spinlock does not record its owner
+     *   walsender_send              0A000 always
+     *   walsender_receive           -1, 0A000 always (0 would mean "no data yet")
+     *   output_plugin_startup       0A000 always
+     *   output_plugin_shutdown      0A000 always
+     *   postmaster_get_child_pid    -1 with 0A000 when track_activities is off; -1 with no
+     *                               error for an id that is not a live backend
+     *   autovacuum_is_running       false with 0A000 when track_activities is off
+     */
+
     /* ---- Error handling ---- */
     void (*ereport)(int errcode, const char *fmt, ...);
     void (*elog)(int elevel, const char *fmt, ...);
@@ -785,6 +912,12 @@ typedef struct KwabiV1 {
     void (*spin_release)(slock_t lock);
 
     /* ---- Postmaster ---- */
+    /* RACE: this reads the backend-status snapshot, which PostgreSQL takes once per
+     * transaction. Two calls in one statement can disagree if a worker starts or exits
+     * between them, and a true answer is already stale when it returns. Do not use it as a
+     * lock or as a guard against starting one. The regression check in
+     * shim/node-tree-api.sql compares it with pg_stat_activity in one statement, which
+     * can flake on a busy runner in the same way. */
     bool (*autovacuum_is_running)(void);
     int (*autovacuum_naptime)(void);
     void (*syslogger_log)(const char *msg);
@@ -1021,6 +1154,63 @@ typedef struct KwabiV1 {
      */
     KwabiMemoryContext (*memory_context_create)(const char *name);
 
+    /* ---- Executor hooks: registration (appended, still v1) ----
+     *
+     * Register a body on a point. Bodies run in registration order, and the first
+     * one registered is outermost. Returns KWABI_OK, or KWABI_ERR_BAD_ARG for a NULL
+     * body. Registration lasts for the life of the backend: there is no unregister.
+     */
+    KwabiStatus (*hook_register_executor_start)(KwabiExecutorStartBody body, void *arg);
+    KwabiStatus (*hook_register_executor_run)(KwabiExecutorRunBody body, void *arg);
+    KwabiStatus (*hook_register_executor_finish)(KwabiExecutorFinishBody body, void *arg);
+    KwabiStatus (*hook_register_executor_end)(KwabiExecutorEndBody body, void *arg);
+
+    /* ---- Executor hooks: run the rest of the chain (appended, still v1) ----
+     *
+     * Called from inside a body with the `next` it was given. A PostgreSQL error
+     * raised by the standard function returns KWABI_ERR_RAISED with `err` filled.
+     */
+    KwabiStatus (*hook_next_executor_start)(KwabiHookNext next, KwabiQueryDesc queryDesc,
+                                            int eflags, KwabiError *err);
+    KwabiStatus (*hook_next_executor_run)(KwabiHookNext next, KwabiQueryDesc queryDesc,
+                                          int direction, uint64_t count, KwabiError *err);
+    KwabiStatus (*hook_next_executor_finish)(KwabiHookNext next, KwabiQueryDesc queryDesc,
+                                             KwabiError *err);
+    KwabiStatus (*hook_next_executor_end)(KwabiHookNext next, KwabiQueryDesc queryDesc,
+                                          KwabiError *err);
+
+    /* ---- Permission check and planner hooks (appended, still v1) ----
+     *
+     * Same contract as the executor points above. See the body typedefs for the
+     * allowed and planned out-parameters. */
+    KwabiStatus (*hook_register_executor_check_perms)(KwabiExecutorCheckPermsBody body,
+                                                      void *arg);
+    KwabiStatus (*hook_register_planner)(KwabiPlannerBody body, void *arg);
+    KwabiStatus (*hook_next_executor_check_perms)(KwabiHookNext next, KwabiList rangeTable,
+                                                  KwabiList rtePermInfos,
+                                                  int ereport_on_violation, int *allowed,
+                                                  KwabiError *err);
+    KwabiStatus (*hook_next_planner)(KwabiHookNext next, KwabiNode parse,
+                                     const char *queryString, int cursorOptions,
+                                     KwabiParamListInfo boundParams, KwabiNode *planned,
+                                     KwabiError *err);
+
+    /* ---- Utility hook (appended, still v1) ---- */
+    KwabiStatus (*hook_register_process_utility)(KwabiProcessUtilityBody body, void *arg);
+    KwabiStatus (*hook_next_process_utility)(KwabiHookNext next, KwabiNode pstmt,
+                                             const char *queryString, int readOnlyTree,
+                                             int context, KwabiParamListInfo params,
+                                             KwabiQueryEnvironment queryEnv,
+                                             KwabiDestReceiver dest,
+                                             KwabiQueryCompletion qc, KwabiError *err);
+
+    /* ---- Reloadable bodies (appended, still v1) ----
+     * Publish a library for a named extension. The first bind creates the name; a
+     * later bind with the same name replaces its library in every backend. Returns
+     * KWABI_ERR_BAD_ARG for a NULL or over-long argument, a name table that is
+     * full, or a runtime that is not preloaded (see KWABI_CAP_HOOK_RELOAD). */
+    KwabiStatus (*hook_bind_extension)(const char *name, const char *path);
+
 } KwabiV1;
 
 /* ========================================================================
@@ -1033,6 +1223,164 @@ typedef struct KwabiV1 {
  * ======================================================================== */
 
 bool kwabi_ext_init(const KwabiV1 *api);
+
+/* ========================================================================
+ * Reloadable type bodies (appended, still v1)
+ *
+ * A library bound with hook_bind_extension(name, path) may also export
+ *
+ *     const KwabiTypeBodies *kwabi_type_bodies(void);
+ *
+ * which supplies the text I/O of a type named `name`. The SQL functions that PostgreSQL
+ * calls are the runtime's: create them as <name>_in(cstring) and <name>_out(<type>),
+ * both LANGUAGE C from the runtime bundle. The runtime looks the body up by the
+ * name's binding, so the binding is what a reload replaces. A value is a 64-bit
+ * unsigned integer carried by value (INTERNALLENGTH = 8, PASSEDBYVALUE).
+ *
+ * input: parse `text`, store the value, return KWABI_OK; on failure fill `err` with an
+ * SQLSTATE (for example 22P02 for bad syntax, 22003 for out of range) and return
+ * KWABI_ERR_BODY_RAISED.
+ * output: write the text of `value` into `buf` (NUL-terminated, buflen bytes) and
+ * return KWABI_OK; a buffer that is too small is KWABI_ERR_BAD_ARG.
+ * ======================================================================== */
+
+#define KWABI_TYPE_BODIES_SYMBOL "kwabi_type_bodies"
+#define KWABI_TYPE_BODIES_VERSION 2
+
+typedef KwabiStatus (*KwabiTypeInputFn)(const char *text, uint64_t *value,
+                                        KwabiError *err, void *arg);
+typedef KwabiStatus (*KwabiTypeOutputFn)(uint64_t value, char *buf, size_t buflen,
+                                         KwabiError *err, void *arg);
+
+/* Operators. The runtime creates one SQL function per operator, named <name>_<op>,
+ * where <op> is one of: eq ne lt le gt ge add sub mul div mod cmp. All of them call the
+ * same C symbol, kwabi_type_binop. Comparisons return a boolean; add, sub, mul, div and
+ * mod return the type; cmp returns an int4 for btree support (-1, 0 or 1). */
+#define KWABI_TYPE_OP_EQ    0
+#define KWABI_TYPE_OP_NE    1
+#define KWABI_TYPE_OP_LT    2
+#define KWABI_TYPE_OP_LE    3
+#define KWABI_TYPE_OP_GT    4
+#define KWABI_TYPE_OP_GE    5
+#define KWABI_TYPE_OP_ADD   6
+#define KWABI_TYPE_OP_SUB   7
+#define KWABI_TYPE_OP_MUL   8
+#define KWABI_TYPE_OP_DIV   9
+#define KWABI_TYPE_OP_MOD   10
+#define KWABI_TYPE_OP_ORDER 11
+
+/* For KWABI_TYPE_OP_ORDER only: the body writes one of these into *result. */
+#define KWABI_TYPE_ORDER_LESS    0
+#define KWABI_TYPE_ORDER_EQUAL   1
+#define KWABI_TYPE_ORDER_GREATER 2
+
+/* Errors: overflow is 22003 (numeric_value_out_of_range); division or remainder by
+ * zero is 22012 (division_by_zero). A comparison cannot fail. */
+typedef KwabiStatus (*KwabiTypeBinopFn)(uint32_t op, uint64_t a, uint64_t b,
+                                        uint64_t *result, KwabiError *err, void *arg);
+
+typedef struct KwabiTypeBodies
+{
+    uint32_t    size;              /* sizeof(KwabiTypeBodies) as the library compiled it */
+    uint32_t    version;           /* KWABI_TYPE_BODIES_VERSION */
+    KwabiTypeInputFn input;
+    KwabiTypeOutputFn output;
+    KwabiTypeBinopFn binop;        /* version 2 */
+    void       *arg;
+} KwabiTypeBodies;
+
+/* ========================================================================
+ * Aggregate bodies (appended, still v1)
+ *
+ * A library bound with hook_bind_extension(name, path) may export
+ *
+ *     const KwabiAggBodies *kwabi_aggregate_bodies(void);
+ *
+ * which supplies an aggregate. The runtime supplies the SQL functions that PostgreSQL
+ * calls, all on one C symbol each, and they dispatch to this table. The binding is the
+ * part of the function's name before "__"; the role is the part after:
+ *
+ *     <binding>__step     (internal, T) -> internal     transition; a NULL state means init
+ *     <binding>__final    (internal)    -> T            final
+ *     <binding>__inverse  (internal, T) -> internal     moving-aggregate inverse
+ *     <binding>__combine  (internal, internal) -> internal
+ *     <binding>__serialize   (internal) -> bytea
+ *     <binding>__deserialize (bytea, internal) -> internal
+ *
+ * The state is opaque to the runtime and is passed as an `internal` pointer, never copied
+ * through SQL. Init allocates with the runtime's memory functions, which place the state in
+ * PostgreSQL's aggregate context.
+ *
+ * Pinning. The runtime wraps each state with the table that created it. step, inverse,
+ * final and serialize always use that pinned table, so a reload during an aggregate cannot
+ * change its layout. combine refuses (0A000) a pair whose pinned tables differ. A reload
+ * is applied only to new states; there is no deferral.
+ *
+ * Nulls are skipped before step; a group with no non-null input has no state, and final is
+ * not called, so its result is NULL. Values are by-value scalars in v1 (inputs and
+ * results); one input per aggregate.
+ *
+ * Optional entries are NULL when absent. serialize and deserialize are required when
+ * combine is present, and PARALLEL SAFE is declared only then.
+ * ======================================================================== */
+
+#define KWABI_AGG_BODIES_SYMBOL  "kwabi_aggregate_bodies"
+#define KWABI_AGG_BODIES_VERSION 1
+
+typedef KwabiStatus (*KwabiAggInitFn)(void **state, KwabiError *err, void *arg);
+typedef KwabiStatus (*KwabiAggStepFn)(void *state, uint64_t value, KwabiError *err, void *arg);
+typedef KwabiStatus (*KwabiAggInverseFn)(void *state, uint64_t value, KwabiError *err, void *arg);
+typedef KwabiStatus (*KwabiAggCombineFn)(void *state, const void *other, KwabiError *err, void *arg);
+typedef KwabiStatus (*KwabiAggFinalFn)(const void *state, uint64_t *result, KwabiError *err, void *arg);
+typedef KwabiStatus (*KwabiAggSerializeFn)(const void *state, char *buf, size_t buflen,
+                                           size_t *used, KwabiError *err, void *arg);
+typedef KwabiStatus (*KwabiAggDeserializeFn)(const char *buf, size_t len, void **state,
+                                             KwabiError *err, void *arg);
+
+typedef struct KwabiAggBodies
+{
+    uint32_t    size;                  /* sizeof(KwabiAggBodies) as the library compiled it */
+    uint32_t    version;               /* KWABI_AGG_BODIES_VERSION */
+    KwabiAggInitFn       init;         /* required */
+    KwabiAggStepFn       step;         /* required */
+    KwabiAggFinalFn      final;        /* required */
+    KwabiAggInverseFn    inverse;      /* optional: moving aggregates */
+    KwabiAggCombineFn    combine;      /* optional: partial aggregation */
+    KwabiAggSerializeFn  serialize;    /* required iff combine is set */
+    KwabiAggDeserializeFn deserialize; /* required iff combine is set */
+    void       *arg;
+} KwabiAggBodies;
+
+/* ========================================================================
+ * Reloadable hook bodies (appended, still v1)
+ *
+ * An extension that wants its hook bodies reloadable exports
+ *
+ *     const KwabiHookBodies *kwabi_hook_bodies(void);
+ *
+ * and is loaded by hook_bind_extension(name, path). The runtime dlopens the path
+ * in each backend on that backend's next hook call after a bind, calls
+ * kwabi_ext_init with the table if the library exports it, and installs the bodies.
+ * A NULL field means the library does not hook that point. The table is read once
+ * per load and must not change for the life of that library image.
+ * ======================================================================== */
+
+#define KWABI_HOOK_BODIES_SYMBOL "kwabi_hook_bodies"
+#define KWABI_HOOK_BODIES_VERSION 1
+
+typedef struct KwabiHookBodies
+{
+    uint32_t    size;              /* sizeof(KwabiHookBodies) as the library compiled it */
+    uint32_t    version;           /* KWABI_HOOK_BODIES_VERSION */
+    KwabiExecutorStartBody start;
+    KwabiExecutorRunBody run;
+    KwabiExecutorFinishBody finish;
+    KwabiExecutorEndBody end;
+    KwabiExecutorCheckPermsBody check_perms;
+    KwabiPlannerBody planner;
+    KwabiProcessUtilityBody utility;
+    void       *arg;
+} KwabiHookBodies;
 
 /* ========================================================================
  * Convenience macros

@@ -116,6 +116,8 @@ def main():
         w("    ///")
         w("    /// The runtime must provide this slot with exactly this signature, and")
         w("    /// every pointer argument must be valid for the use the slot makes of it.")
+        if len(args) + 1 > 7:  # clippy counts &self; its default limit is 7
+            w("    #[allow(clippy::too_many_arguments)]")
         w(f"    pub unsafe fn {name}(&self{', ' if params else ''}{params}){sig_ret} {{")
         w(f'        (self.api.{name}.expect("{name}"))({call_args})')
         w("    }")
